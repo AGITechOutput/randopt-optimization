@@ -1,5 +1,13 @@
-torch>=2.0
-transformers>=4.45
-numpy>=1.24
-scipy>=1.10
-xgboost>=2.0
+# requirements.txt (开源演示版，双平台通用)
+# 英伟达
+torch>=2.1.0,<2.2.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+# 昇腾（需预先安装CANN 8.0.RC3）
+# torch==2.1.0 torch_npu==2.1.0
+transformers>=4.45.0,<4.46.0
+datasets>=2.14.0
+accelerate>=0.24.0
+numpy>=1.24.0
+scipy>=1.10.0
+xgboost>=2.0.0
