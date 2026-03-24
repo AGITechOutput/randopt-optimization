@@ -8,6 +8,7 @@ import argparse
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
 import copy
+import json
 
 def add_dynamic_layer_noise(model, sigma_small=0.005, sigma_mid=0.01, sigma_large=0.02):
     """
@@ -22,8 +23,15 @@ def add_dynamic_layer_noise(model, sigma_small=0.005, sigma_mid=0.01, sigma_larg
     num_layers = len(model.model.layers)
     s1, s2 = num_layers // 3, 2 * num_layers // 3
     
-    # 深拷贝模型，避免修改原模型（演示版简化实现，生产版采用原位扰动）
+    # 深拷贝模型，避免修改原模型
+    # 优化点：先移回CPU防止显存溢出（7B模型深拷贝会消耗双倍显存）
+    original_device = next(model.parameters()).device
+    model.cpu()
+    print("[INFO] 正在创建模型副本（此过程可能耗时较长，请耐心等待）...")
     model_noisy = copy.deepcopy(model)
+    model_noisy.to(original_device)  # 拷回原设备
+    # 将原模型也移回原设备（演示版后续不再使用原模型，可不移，但保留以保持一致）
+    model.to(original_device)
     
     for layer_idx, layer in enumerate(model_noisy.model.layers):
         # 按层索引分配噪声强度
@@ -80,7 +88,6 @@ def evaluate_accuracy(model, tokenizer, dataset_subset, result_file=None):
     
     # 可选：保存结果到文件
     if result_file:
-        import json
         with open(result_file, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
     
@@ -124,7 +131,11 @@ if __name__ == "__main__":
 
         # 加载GSM8K子集（100条样本，用于演示）
         print("[INFO] 加载GSM8K测试子集（100条样本，演示用）...")
-        dataset = load_dataset("gsm8k", "main", split="test[:100]")
+        try:
+            dataset = load_dataset("gsm8k", "main", split="test[:100]")
+        except Exception as e:
+            print("[ERROR] 数据集下载失败，请检查网络或HuggingFace token权限")
+            raise
 
         # 基线精度
         print("[INFO] 计算基线精度...")
