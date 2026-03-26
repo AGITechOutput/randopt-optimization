@@ -1,57 +1,52 @@
-# RandOpt Optimization
+RandOpt Optimization
+ 
 大模型推理层双平台优化方案｜昇腾 + 英伟达｜纯推理优化｜可复现验证
-
-## 项目简介
-
-RandOpt 是一个受集成学习与噪声注入思路启发的纯推理层优化框架，不修改模型结构、不重新训练，通过动态分层噪声提升模型精度。  
-本仓库为对外开源演示版，仅提供动态分层噪声的核心原理与可复现脚本，用于验证噪声注入对精度的基础增益（约 0.6%）。  
+ 
+项目简介
+ 
+RandOpt 是一个受集成学习与噪声注入思路启发的纯推理层优化框架，不修改模型结构、不重新训练，通过动态分层噪声提升模型精度。
+本仓库为对外开源演示版，仅提供动态分层噪声的核心原理与可复现脚本，用于验证噪声注入对精度的基础增益（约 0.6%）。
 全量优化（含动态集成、昇腾多流并行、MoE 量化联动）属于内部生产版本，暂不公开。
-
----
-
-## ⚠️ 重要声明  
+ 
+⚠️ 重要声明
+ 
 本仓库代码为算法验证演示版，未经过生产环境大规模稳定性与安全测试。生产部署请基于本方案进行完整工程化开发。
-
----
-
-## 核心能力（开源演示版可复现）
-
-- **动态分层噪声（双平台通用）**  
-  浅层小扰动、深层大扰动，精度较固定噪声提升约 0.6%。  
-  关键参数：浅层 σ=0.005，中层 σ=0.01，深层 σ=0.02。
-
-> 注：动态集成（自适应 K 值）、昇腾多流并行等高级优化属于内部生产版本，不在本仓库开源范围内。
-
----
-
-## 测试环境（实测可溯源）
-
-### 硬件配置
-- 昇腾：Atlas 800 服务器，昇腾 910B 8卡，单卡显存 64GB  
+ 
+核心能力（开源演示版可复现）
+ 
+动态分层噪声（双平台通用）
+ 
+浅层小扰动、深层大扰动，精度较固定噪声提升约 0.6%。
+关键参数：浅层 σ=0.005，中层 σ=0.01，深层 σ=0.02。
+ 
+注：动态集成（自适应 K 值）、昇腾多流并行等高级优化属于内部生产版本，不在本仓库开源范围内。
+ 
+测试环境（实测可溯源）
+ 
+硬件配置
+ 
+- 昇腾：Atlas 800 服务器，昇腾 910B 8卡，单卡显存 64GB
 - 英伟达：A100 80GB / H800 80GB（单卡/多卡部署均可）
-
-### 软件版本
-- 昇腾：CANN 8.0.RC3，torch_npu 2.1.0，PyTorch 2.1.0，Python 3.10  
-- 英伟达：CUDA 12.1，TensorRT 10.0，PyTorch 2.2.0，Python 3.10  
+ 
+软件版本
+ 
+- 昇腾：CANN 8.0.RC3，torch_npu 2.1.0，PyTorch 2.1.0，Python 3.10
+- 英伟达：CUDA 12.1，TensorRT 10.0，PyTorch 2.2.0，Python 3.10
 - 通用依赖：Transformers 4.45+，numpy≥1.24，scipy≥1.10
-
----
-
-## 开源内容（安全可公开）
-
-- 动态分层噪声的核心算法与关键参数  
-- 可复现的基础测试脚本（英伟达 / 昇腾）  
-- 双平台环境配置说明  
+ 
+开源内容（安全可公开）
+ 
+- 动态分层噪声的核心算法与关键参数
+- 可复现的基础测试脚本（英伟达 / 昇腾）
+- 双平台环境配置说明
 - 轻量化精度评估工具（GSM8K 演示子集）
-
----
-
-## 快速开始
-
-### 1. 一键运行（推荐）
+ 
+快速开始
+ 
+1. 一键运行（推荐）
+ 
 如果你已经配置好环境，可以直接运行我们提供的一键脚本，自动完成环境检查与基准测试：
-```bash
-bash run.sh
+ 
  
  
 （脚本默认运行英伟达版本，如需运行昇腾版本，可修改脚本内的执行命令）
@@ -60,17 +55,9 @@ bash run.sh
  
 英伟达平台
  
-bash
-  
-python basic_benchmark_nvidia.py --model Qwen/Qwen2.5-7B-MoE --noise_strategy dynamic
  
  
 昇腾平台
- 
-bash
-  
-python basic_benchmark_ascend.py --model Qwen/Qwen2.5-7B-MoE --noise_strategy dynamic
- 
  
  
  
@@ -82,28 +69,14 @@ python basic_benchmark_ascend.py --model Qwen/Qwen2.5-7B-MoE --noise_strategy dy
  
 运行多轮独立实验，计算平均增益与标准差，确保结果非随机波动：
  
-bash
-  
-# 英伟达
-python basic_benchmark_nvidia.py --repeat 10 --save_result
-
-# 昇腾
-python basic_benchmark_ascend.py --repeat 10 --save_result
  
  
-输出示例： 平均提升 0.60% (±0.015) 
+输出示例：平均提升 0.60% (±0.015)
  
 2. 噪声分布可视化
  
 直观展示“浅层小、深层大”的分层策略：
  
-bash
-  
-# 英伟达
-python basic_benchmark_nvidia.py --visualize
-
-# 昇腾
-python basic_benchmark_ascend.py --visualize
  
  
 将生成  noise_distribution.png  热力图。
@@ -112,18 +85,9 @@ python basic_benchmark_ascend.py --visualize
  
 查看每一层权重的具体扰动数值，确保无黑盒操作：
  
-bash
-  
-# 英伟达
-python basic_benchmark_nvidia.py --verbose
-
-# 昇腾
-python basic_benchmark_ascend.py --verbose
  
  
 打印前5层和后5层的噪声强度，证明分层逻辑真实存在。
- 
- 
  
 预期效果
  
@@ -134,22 +98,16 @@ python basic_benchmark_ascend.py --verbose
  
 ⚠️ 注意：脚本会原地修改模型权重（直接在原模型参数上加噪声）。如需多次对比测试（如重复运行不同参数），请在两次运行之间重新加载模型，避免前一次修改影响后续结果。
  
- 
- 
 高级参数（可选）
  
 -  --batch_size ：批量大小，默认 8，可根据显存调整。
 -  --sigma_small / --sigma_mid / --sigma_large ：自定义分层噪声强度。
 -  --save_result ：保存样例输出到 JSON 文件。
  
- 
- 
 支持模型
  
 - 已验证：Qwen2.5-7B-MoE（开箱即用）
 - 适配中：其他主流 MoE 模型（如 Mixtral、DeepSeek-V2 等），需根据模型结构小幅适配层索引逻辑，欢迎技术交流。
- 
- 
  
 适用场景
  
@@ -158,14 +116,10 @@ python basic_benchmark_ascend.py --verbose
 - 波动敏感型业务（数学推理、智能客服、结构化输出）
 - 低延迟、高稳定性的大模型生产推理环境
  
- 
- 
 声明
  
 本项目仅提供算法验证与技术交流，开源内容均为安全可公开的原理级实现，无涉密逻辑、无底层硬件机密。
 欢迎同行验证、讨论、优化，如需基于本方案进行生产级开发，建议做好大规模稳定性与安全测试。
- 
- 
  
 后续规划（内部方向）
  
@@ -173,4 +127,3 @@ python basic_benchmark_ascend.py --verbose
 - 双平台自动适配工具（一键切换昇腾/英伟达）
 - 更多主流 MoE 模型开箱即用支持
 - 探索昇腾多流并行优化方向（暂未开源）
- 
