@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# 这是一个自动化的运行脚本
+# 作者：你（AGITechOutput）
+
+echo "🚀 开始运行 RandOpt 演示版..."
+echo "--------------------------------"
+
+# 第一步：安装依赖
+echo "📦 正在安装 Python 依赖库..."
+pip install -r requirements.txt
+if [ $? -ne 0 ]; then
+    echo "❌ 安装依赖失败！请检查你的网络或 requirements.txt 文件。"
+    exit 1
+fi
+echo "✅ 依赖安装完成！"
+
+# 第二步：运行昇腾平台的测试
+echo "💻 正在运行昇腾平台 (Ascend) 基准测试..."
+python benchmark/ascend_demo_benchmark.py
+if [ $? -ne 0 ]; then
+    echo "❌ 昇腾测试运行失败！"
+    exit 1
+fi
+echo "✅ 昇腾测试运行成功！"
+
+# 第三步：运行英伟达平台的测试
+echo "💻 正在运行英伟达平台 (NVIDIA) 基准测试..."
+python benchmark/nvidia_demo_benchmark.py
+if [ $? -ne 0 ]; then
+    echo "❌ 英伟达测试运行失败！"
+    exit 1
+fi
+echo "✅ 英伟达测试运行成功！"
+
+echo "--------------------------------"
+echo "🎉 恭喜！所有演示脚本运行完毕！"
+echo "结果请查看屏幕上的输出。"
+
