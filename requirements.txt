@@ -1,10 +1,14 @@
-# requirements.txt (开源演示版，双平台通用)
-# 英伟达
+# requirements.txt（开源演示版，双平台通用）
+# 英伟达平台依赖
 torch>=2.1.0,<2.2.0
 torchvision>=0.16.0
 torchaudio>=2.1.0
-# 昇腾（需预先安装CANN 8.0.RC3）
-# torch==2.1.0 torch_npu==2.1.0
+
+# 昇腾平台依赖（需预先安装 CANN 8.0.RC3）
+# torch==2.1.0 + torch_npu==2.1.0（由 CANN 环境提供）
+# 请勿手动 pip 安装 torch_npu，应通过 CANN 安装包部署
+
+# 通用依赖
 transformers>=4.45.0,<4.46.0
 datasets>=2.14.0
 accelerate>=0.24.0
