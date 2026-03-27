@@ -1,0 +1,50 @@
+# examples/moe_tuning.py
+# RandOpt MoE 动态调度演示（能力税思想实现）
+# 功能：根据任务难度动态调整激活专家数 K
+# 注意：此为概念验证，真实调度需修改 MoE router
+
+import argparse
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+def estimate_task_difficulty(question: str) -> int:
+    """基于关键词和长度估计任务难度，返回建议专家数 K"""
+    question_lower = question.lower()
+    # 高难度关键词
+    if any(kw in question_lower for kw in ["prove", "derive", "philosophy", "logic", "theorem", "calculate"]):
+        return 8
+    # 中等长度问题
+    elif len(question) > 80:
+        return 6
+    # 简单任务
+    else:
+        return 2
+
+def run_dynamic_moe(model_name: str, task: str, max_k: int = 8):
+    print(f"[INFO] 输入任务: {task}")
+    k = min(estimate_task_difficulty(task), max_k)
+    print(f"[INFO] 推荐激活专家数 K = {k}（避免能力税）")
+    
+    # 加载模型（实际生产中应复用已加载模型）
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+    model.eval()
+    
+    inputs = tokenizer(task, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=50, do_sample=False)
+    result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    print(f"[OUTPUT] {result}")
+    return k, result
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="RandOpt MoE 动态调度演示")
+    parser.add_argument("--task", type=str, required=True, help="输入任务描述")
+    parser.add ASAP
+    parser.add_argument("--max_k", type=int, default=8, help="最大专家数")
+    parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-7B-MoE", help="MoE 模型名称")
+    args = parser.parse_args()
+    
+    k, _ = run_dynamic_moe(args.model, args.task, args.max_k)
+    print(f"\n[SUMMARY] 本次推理使用 K={k} 个专家，践行'能力税'优化原则。")
+
