@@ -1,5 +1,5 @@
 # basic_benchmark_nvidia.py（开源演示版，英伟达单卡优化版）
-# 版本：v3.1-final（英伟达单卡专属）
+# 版本：v3.2-final（英伟达单卡专属｜修复tokenizer重复加载｜强化答案匹配）
 # 功能：动态分层噪声验证 + 多轮统计、可视化、详细日志
 import torch
 import argparse
@@ -8,6 +8,7 @@ from datasets import load_dataset
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 
 def add_noise_inplace(model, sigma_small=0.005, sigma_mid=0.01, sigma_large=0.02, verbose=False):
     num_layers = len(model.model.layers)
@@ -30,6 +31,16 @@ def add_noise_inplace(model, sigma_small=0.005, sigma_mid=0.01, sigma_large=0.02
                 param.data = (weight_fp32 + noise).to(param.dtype)
     return model
 
+def extract_answer(pred: str) -> str:
+    """从模型输出中提取最终答案（GSM8K格式）"""
+    # 尝试匹配 "The answer is X." 或末尾数字
+    match = re.search(r'The answer is (\d+)\.', pred)
+    if match:
+        return match.group(1)
+    # 否则取最后一串数字
+    numbers = re.findall(r'\d+', pred)
+    return numbers[-1] if numbers else ""
+
 def evaluate_accuracy_batched(model, tokenizer, dataset_subset, batch_size=8):
     model.eval()
     device = model.device
@@ -44,12 +55,12 @@ def evaluate_accuracy_batched(model, tokenizer, dataset_subset, batch_size=8):
             outputs = model.generate(**inputs, max_new_tokens=32, do_sample=False, pad_token_id=tokenizer.eos_token_id)
         preds = tokenizer.batch_decode(outputs, skip_special_tokens=True)
         for pred, answer in zip(preds, answers):
-            if answer.strip() in pred:
+            pred_ans = extract_answer(pred)
+            if pred_ans == answer.strip():
                 correct += 1
     return round((correct / total) * 100, 2)
 
 def visualize_noise(model_name, sigma_small, sigma_mid, sigma_large):
-    # 需要临时加载模型以获取层数
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
     num_layers = len(model.model.layers)
     s1, s2 = num_layers // 3, 2 * num_layers // 3
@@ -73,18 +84,20 @@ def visualize_noise(model_name, sigma_small, sigma_mid, sigma_large):
 
 def run_multi_rounds(model_name, tokenizer, dataset, noise_strategy, batch_size, sigma, repeat, save_result):
     gains = []
+    # 提前加载 tokenizer（避免每轮重复 I/O）
+    tokenizer_local = AutoTokenizer.from_pretrained(model_name)
+    tokenizer_local.pad_token = tokenizer_local.eos_token
+    
     for r in range(repeat):
         print(f"[INFO] 第 {r+1}/{repeat} 轮")
         model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.pad_token = tokenizer.eos_token
         model.eval()
-        base_acc = evaluate_accuracy_batched(model, tokenizer, dataset, batch_size)
+        base_acc = evaluate_accuracy_batched(model, tokenizer_local, dataset, batch_size)
         if noise_strategy == "dynamic":
             model = add_noise_inplace(model, sigma[0], sigma[1], sigma[2])
         else:
             model = add_noise_inplace(model, 0.02, 0.02, 0.02)
-        opt_acc = evaluate_accuracy_batched(model, tokenizer, dataset, batch_size)
+        opt_acc = evaluate_accuracy_batched(model, tokenizer_local, dataset, batch_size)
         gain = opt_acc - base_acc
         gains.append(gain)
         print(f"[INFO] 本轮提升: {gain:.2f}%")
@@ -142,8 +155,4 @@ if __name__ == "__main__":
     print("[INFO] 计算优化后精度...")
     opt_acc = evaluate_accuracy_batched(model, tokenizer, dataset, args.batch_size)
     print(f"[RESULT] 优化后精度: {opt_acc:.2f}%")
-    print(f"[RESULT] 精度提升: {opt_acc - base_acc:.2f}%")
-    if args.save_result:
-        with open("benchmark_result.json","w") as f:
-            json.dump({"base":base_acc,"opt":opt_acc,"gain":opt_acc-base_acc}, f)
-        print("[INFO] 结果已保存至 benchmark_result.json")
+    print(f"[RESULT] 精度提升: {opt_acc - base_acc:.2
