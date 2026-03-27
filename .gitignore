@@ -1,5 +1,5 @@
 # Python 缓存
-__pycache__/
+_pycache_/
 *.py[cod]
 
 # 编译产物（如自定义算子）
